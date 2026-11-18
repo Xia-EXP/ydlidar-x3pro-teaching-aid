@@ -1,0 +1,18 @@
+{
+  "name": "ydlidar-x3pro-teaching-aid",
+  "version": "0.1.3",
+  "private": false,
+  "description": "YDLIDAR X3 PRO Windows teaching aid using Edge Web Serial",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs --port 5173",
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check server.mjs && node --check public/js/app.js && node --check public/js/console-layout.js && node --check public/js/protocol.js && node --check public/js/render.js && node --check public/js/device-profile.js && node --check public/js/video-lesson.js && node --check public/js/g1-sim.js",
+    "release:check": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\verify-release.ps1",
+    "release:portable": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build-portable.ps1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": ["public", "server.mjs", "start.ps1", "one-click-start.cmd", "scripts", "README.md", "MODULES.md"]
+}

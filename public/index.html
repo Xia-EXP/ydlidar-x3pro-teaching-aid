@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="YDLIDAR X3 PRO 雷达原理与避障教学工具">
+    <meta name="color-scheme" content="dark">
+    <title>雷达控制台 · YDLIDAR X3 PRO</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <!-- styles.css 提供设计变量与通用组件；console.css 负责整页布局与响应式。 -->
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/console.css">
+    <!-- G1 仿真使用本地打包的 three.js，离线可用。 -->
+    <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three/addons/" } }</script>
+  </head>
+  <body>
+    <!-- 顶栏：品牌、设备型号与全局连接状态。 -->
+    <header class="topbar">
+      <div class="brand">
+        <img class="brand-mark" src="/favicon.svg" alt="" width="32" height="32">
+        <h1>雷达控制台 <span class="brand-model">YDLIDAR X3 PRO</span></h1>
+      </div>
+      <p class="brand-tagline">二维测距 · 坐标变换 · 几何避障教学</p>
+      <div class="status-pill" aria-live="polite">
+        <span class="status-dot" id="statusDot" aria-hidden="true"></span>
+        <span id="connectionState">未连接</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- 侧栏：错误提示、设备操作、避障决策与点位读数。 -->
+      <aside class="sidebar" aria-label="设备与实时读数">
+        <p class="error-message" id="errorMessage" role="alert" hidden></p>
+
+        <section class="card device-card" aria-labelledby="connectionHeading">
+          <header class="card-header">
+            <h2 id="connectionHeading" class="card-title">设备连接</h2>
+            <details class="console-disclosure connection-settings">
+              <summary>连接设置</summary>
+              <div class="disclosure-body popover popover-narrow">
+                <label class="field" for="baudRate">
+                  <span class="field-label">波特率</span>
+                  <select id="baudRate" class="select-control">
+                    <option value="115200" selected>115200</option>
+                    <option value="230400">230400</option>
+                    <option value="128000">128000</option>
+                  </select>
+                </label>
+                <label class="form-check">
+                  <input id="dtrControlInput" class="form-check-input" type="checkbox">
+                  <span class="form-check-label">连接时请求 DTR 电机</span>
+                </label>
+                <p id="browserSupport" class="helper-text">正在检查浏览器串口能力…</p>
+              </div>
+            </details>
+          </header>
+
+          <div class="port-row">
+            <!-- 主入口筛选常见 USB 转接板，兼容入口用于其他厂商的转接板。 -->
+            <button class="button button-secondary" id="choosePortButton" type="button">选择串口</button>
+            <button class="button button-quiet" id="chooseOtherPortButton" type="button">其他 USB 转接板</button>
+            <span class="port-description" id="portDescription">尚未授权 COM 口</span>
+          </div>
+
+          <div class="device-actions">
+            <button class="button button-primary device-connect" id="connectButton" type="button" disabled>连接</button>
+            <button class="button button-secondary" id="startScanButton" type="button" disabled>开始扫描</button>
+            <button class="button button-quiet button-danger" id="stopScanButton" type="button" disabled>停止扫描</button>
+            <button class="button button-quiet button-danger device-disconnect" id="disconnectButton" type="button" disabled>断开</button>
+          </div>
+
+          <div class="device-message">
+            <p class="toolbar-message" id="connectionMessage" role="status">请使用匹配的 USB 转接板和 5V 供电，再选择串口。</p>
+            <details class="console-disclosure connection-help">
+              <summary>连接排查</summary>
+              <div class="disclosure-body popover popover-narrow">
+                <p class="no-data-checklist" id="noDataChecklist">无数据时依次检查：雷达供电、USB 驱动、正确 COM 口、115200 波特率和转接板接线。</p>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <!-- 避障决策：左、前、右三个扇区清距与触发规则；G1 主舞台预演同一份建议。 -->
+        <section class="card decision-panel" aria-labelledby="decisionHeading">
+          <header class="card-header">
+            <h2 id="decisionHeading" class="card-title">避障决策</h2>
+            <span class="decision-badge decision-no-data" id="decisionBadge">暂无决策</span>
+          </header>
+          <div class="sector-grid" aria-label="扇区清距">
+            <div class="sector-item sector-left"><span>左侧</span><strong id="leftClearance">--</strong><small>mm</small></div>
+            <div class="sector-item sector-front"><span>前方</span><strong id="frontClearance">--</strong><small>mm</small></div>
+            <div class="sector-item sector-right"><span>右侧</span><strong id="rightClearance">--</strong><small>mm</small></div>
+          </div>
+          <p class="decision-reason" id="decisionReason">连接雷达后，这里会显示触发建议的扇区数据和规则。</p>
+        </section>
+
+        <!-- 点位读数：点击极坐标图中的点后显示坐标变换结果。 -->
+        <section class="card point-panel" aria-labelledby="pointHeading">
+          <header class="card-header">
+            <h2 id="pointHeading" class="card-title">点位读数</h2>
+            <span class="chip" id="selectedPointIndex">未选择</span>
+          </header>
+          <div class="point-fields">
+            <div><span>角度</span><strong id="selectedAngle">--</strong><small>°</small></div>
+            <div><span>距离</span><strong id="selectedDistance">--</strong><small>mm</small></div>
+            <div><span>X（前）</span><strong id="selectedX">--</strong><small>mm</small></div>
+            <div><span>Y（左）</span><strong id="selectedY">--</strong><small>mm</small></div>
+          </div>
+          <p class="card-note point-meta" id="selectedPointMeta">包号 / 采样序号 / 原始距离 / 原始角度 / 三角修正：--</p>
+          <p class="sr-only" id="selectedPointAnnouncement" role="status" aria-live="polite"></p>
+          <p class="card-note">点击极坐标图中的点可查看角度、距离和坐标变换结果。</p>
+        </section>
+      </aside>
+
+      <!-- G1 主舞台：雷达点云 → 避障决策 → G1 动作预演；仅可视化，不控制真实机器人。 -->
+      <section class="card g1-stage" id="g1Sim" aria-labelledby="g1Heading">
+        <header class="card-header g1-stage-header">
+          <div class="g1-stage-title">
+            <h2 id="g1Heading" class="card-title">G1 避障仿真</h2>
+            <span class="chip">雷达点云 → 避障决策 → 动作预演</span>
+          </div>
+          <div class="g1-stage-tools">
+            <button class="button button-quiet button-small" type="button" data-g1="reset-view">复位视角</button>
+            <button class="button button-secondary button-small" type="button" data-g1="expand" aria-pressed="false">放大</button>
+          </div>
+        </header>
+        <div class="g1-viewport">
+          <div class="g1-sim-canvas" role="img" aria-label="宇树 G1 仿真：按雷达避障建议预演动作" aria-describedby="g1SimStatus g1SimPlan"></div>
+          <p class="g1-sim-status" id="g1SimStatus" data-g1="status" aria-live="polite">G1 仿真准备中…</p>
+        </div>
+        <footer class="g1-stage-footer">
+          <p class="g1-sim-plan" id="g1SimPlan" data-g1="plan">仿真示意，不控制真实机器人</p>
+          <ul class="g1-legend" aria-label="仿真图例">
+            <li><span class="g1-swatch g1-swatch-near" aria-hidden="true"></span>停止距离内</li>
+            <li><span class="g1-swatch g1-swatch-caution" aria-hidden="true"></span>转向距离内</li>
+            <li><span class="g1-swatch g1-swatch-far" aria-hidden="true"></span>更远回波</li>
+            <li><span class="g1-swatch g1-swatch-sector" aria-hidden="true"></span>地面扇区：绿通畅 / 橙注意 / 红阻挡</li>
+            <li><span class="g1-swatch g1-swatch-path" aria-hidden="true"></span>预演路径</li>
+          </ul>
+          <p class="card-note g1-credit">模型：宇树 unitree_ros G1 29 自由度（BSD-3）。拖动旋转、滚轮缩放；预演走完回到雷达位置重放，不向任何机器人发送命令。</p>
+        </footer>
+      </section>
+
+      <!-- 雷达双视图：极坐标扫描与局部地图。 -->
+      <section class="visual-grid" aria-label="实时雷达视图">
+        <!-- 极坐标扫描视图。 -->
+        <article class="card view-card">
+          <header class="card-header">
+            <h2 class="card-title">极坐标扫描</h2>
+            <span class="chip chip-mono" id="scanFrequency">-- Hz</span>
+          </header>
+          <div class="view-tools">
+            <span class="view-caption">0° 前方 · 正角度向左</span>
+            <details class="console-disclosure scan-settings">
+              <summary>扫描图层</summary>
+              <div class="disclosure-body popover" aria-label="扫描教学图层控制">
+                <h3 class="popover-title">实时扫描图层</h3>
+                <div class="check-list">
+                  <label class="form-check"><input id="showLiveBeamInput" class="form-check-input" type="checkbox"><span class="form-check-label">当前扫描波束</span></label>
+                  <label class="form-check"><input id="showPacketEchoInput" class="form-check-input" type="checkbox"><span class="form-check-label">当前包回波</span></label>
+                  <label class="form-check"><input id="showSweptSectorInput" class="form-check-input" type="checkbox"><span class="form-check-label">已扫扇区</span></label>
+                  <label class="form-check"><input id="showInvalidInput" class="form-check-input" type="checkbox"><span class="form-check-label">无效采样</span></label>
+                  <label class="form-check"><input id="showCoordinateGridInput" class="form-check-input" type="checkbox" checked><span class="form-check-label">空间坐标网格</span></label>
+                </div>
+                <p class="card-note">串口字节流 → AA 55 → CT/LSN → FSA/LSA → Si/4 mm → 三角角度修正 → X/Y 空间回波。完整点云按扫描圈刷新。前三项逐包刷新：雷达约 7 圈/秒，远快于屏幕刷新，开启后波束会跳动，默认关闭，讲解协议时再打开。</p>
+              </div>
+            </details>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="polarCanvas" role="img" tabindex="0" aria-label="实时极坐标雷达扫描图" aria-describedby="polarSummary polarLegend"></canvas>
+          </div>
+          <footer class="view-footer">
+            <p class="canvas-summary" id="polarSummary">等待串口数据；这里显示 0° 正前方、正角度向左的测距点。</p>
+            <p class="canvas-legend" id="polarLegend"><span class="range-ramp" aria-hidden="true"></span>点色：近距离橙色 / 中距离青色 / 远距离绿色；按 Enter 可选择第一个有效点。</p>
+          </footer>
+        </article>
+
+        <!-- 局部地图 / 实验性增量建图视图。 -->
+        <article class="card view-card occupancy-panel">
+          <header class="card-header">
+            <h2 class="card-title" id="mapHeading">局部地图</h2>
+            <div class="map-heading-values">
+              <span class="map-mode-badge map-mode-local" id="mapModeBadge">固定雷达局部图</span>
+              <span class="chip chip-mono" id="clusterCount">0 个簇</span>
+            </div>
+          </header>
+          <div class="view-tools map-view-tools">
+            <label class="map-mode-control" for="mappingModeInput">
+              <span class="sr-only">地图模式</span>
+              <select id="mappingModeInput" class="select-control">
+                <option value="local" selected>固定雷达局部图</option>
+                <option value="mapping">实验性增量建图</option>
+              </select>
+            </label>
+            <button class="button button-quiet button-small map-clear-button" id="clearOccupancyButton" type="button" data-map-mode="local">清空局部图</button>
+            <details class="console-disclosure map-settings">
+              <summary>地图设置</summary>
+              <!-- 地图参数只影响教学画面，不参与串口协议解析。 -->
+              <div class="disclosure-body popover map-controls" aria-label="局部占据栅格和建图控制">
+                <label class="field" for="occupancyResolutionInput">
+                  <span class="field-label">局部图分辨率</span>
+                  <select id="occupancyResolutionInput" class="select-control">
+                    <option value="50" selected>50 mm / 格</option>
+                    <option value="100">100 mm / 格</option>
+                    <option value="200">200 mm / 格</option>
+                  </select>
+                </label>
+                <label class="field" for="occupancyPersistenceInput">
+                  <span class="field-label">局部图累积时间 <output id="occupancyPersistenceValue">3 s</output></span>
+                  <input id="occupancyPersistenceInput" class="range-control" type="range" min="1" max="6" step="1" value="3">
+                </label>
+                <fieldset class="check-list map-layer-controls">
+                  <legend>显示图层</legend>
+                  <label class="form-check"><input id="showLiveRaysInput" class="form-check-input" type="checkbox" checked><span class="form-check-label">局部图实时射线</span></label>
+                  <label class="form-check"><input id="showClustersInput" class="form-check-input" type="checkbox" checked><span class="form-check-label">局部图障碍簇</span></label>
+                  <label class="form-check"><input id="showDecisionInput" class="form-check-input" type="checkbox" checked><span class="form-check-label">局部图决策</span></label>
+                  <label class="form-check"><input id="showMappingTrajectoryInput" class="form-check-input" type="checkbox" checked><span class="form-check-label">建图轨迹</span></label>
+                  <label class="form-check"><input id="showMappingScanInput" class="form-check-input" type="checkbox" checked><span class="form-check-label">当前扫描</span></label>
+                </fieldset>
+              </div>
+            </details>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="mapCanvas" role="img" aria-label="雷达坐标系下的局部占据栅格或实验性增量地图" aria-describedby="mapSummary mappingSummary occupancyLegend mapNotice"></canvas>
+          </div>
+          <footer class="view-footer">
+            <!-- 文字统计让不依赖颜色或 Canvas 的用户也能理解地图状态。 -->
+            <dl class="stat-row" id="occupancyStats" aria-label="局部占据栅格摘要">
+              <div><dt>空闲格（当前图）</dt><dd id="occupancyFreeCount">0</dd></div>
+              <div><dt>占据格（当前图）</dt><dd id="occupancyOccupiedCount">0</dd></div>
+              <div><dt>帧龄</dt><dd id="occupancyFrameAge">-- ms</dd></div>
+              <div><dt>扫描频率</dt><dd id="occupancyScanFrequency">-- Hz</dd></div>
+            </dl>
+            <p class="canvas-summary" id="mapSummary">等待完整扫描；0° 位于画面正上方，+90° 位于左侧，坐标系为 lidar_link。</p>
+
+            <!-- 建图操作与状态仅在实验性建图模式显示；历史建图不参与避障决策。 -->
+            <div class="mapping-actions" aria-label="增量建图操作" data-map-mode="mapping" hidden>
+              <button class="button button-primary" id="startMappingButton" type="button" disabled>开始建图</button>
+              <button class="button button-secondary" id="pauseMappingButton" type="button" disabled>暂停建图</button>
+              <button class="button button-quiet" id="clearMappingButton" type="button">清空建图</button>
+            </div>
+            <section class="mapping-summary" aria-labelledby="mappingSummaryHeading" data-map-mode="mapping" hidden>
+              <div class="mapping-summary-heading">
+                <h3 id="mappingSummaryHeading">建图状态</h3>
+                <span class="mapping-status-badge mapping-ready" id="mappingStatusBadge">未开始</span>
+              </div>
+              <dl class="mapping-stats" aria-label="增量建图状态摘要">
+                <div><dt>位姿 X</dt><dd id="mappingPoseX">-- mm</dd></div>
+                <div><dt>位姿 Y</dt><dd id="mappingPoseY">-- mm</dd></div>
+                <div><dt>朝向</dt><dd id="mappingPoseTheta">--°</dd></div>
+                <div><dt>匹配质量</dt><dd id="mappingMatchQuality">--</dd></div>
+                <div><dt>内点数</dt><dd id="mappingInlierCount">--</dd></div>
+                <div><dt>建图帧数</dt><dd id="mappingFrameCount">0</dd></div>
+                <div><dt>地图帧龄</dt><dd id="mappingMapAge">-- ms</dd></div>
+                <div><dt>跟踪状态</dt><dd id="mappingTrackingState">未开始</dd></div>
+              </dl>
+              <p class="mapping-summary-text" id="mappingSummary">选择“实验性增量建图”后，连接雷达并开始扫描。</p>
+            </section>
+
+            <!-- 图例同时使用形状、边框和文字，避免只靠颜色传达状态。 -->
+            <ul class="map-legend" id="occupancyLegend" aria-label="占据栅格图例">
+              <li><span class="legend-swatch legend-unknown" aria-hidden="true"></span>未知</li>
+              <li><span class="legend-swatch legend-free" aria-hidden="true"></span>射线经过（空闲）</li>
+              <li><span class="legend-swatch legend-occupied" aria-hidden="true"></span>稳定占据</li>
+              <li><span class="legend-swatch legend-live" aria-hidden="true"></span>当前回波</li>
+              <li><span class="legend-swatch legend-cluster" aria-hidden="true"></span>局部图障碍簇</li>
+              <li><span class="legend-swatch legend-trajectory" aria-hidden="true"></span>建图轨迹</li>
+              <li><span class="legend-swatch legend-pose" aria-hidden="true"></span>当前位姿</li>
+            </ul>
+            <p class="map-notice" id="mapNotice">
+              <strong>教学边界：</strong><span id="mapNoticeText">固定雷达局部累积；移动后请清空。切换到实验性建图后，地图仍可能因无里程计而漂移，不是完整 SLAM。</span>
+            </p>
+          </footer>
+        </article>
+      </section>
+
+      <!-- 工作区页签：参数、诊断与教学说明，页签切换不发送任何设备命令。 -->
+      <section class="card workspace-panel" aria-label="参数、诊断与教学">
+        <div class="workspace-bar">
+          <div class="workspace-tabs" role="tablist" aria-label="工作区内容">
+            <button id="tab-parameters" class="workspace-tab" type="button" role="tab" aria-controls="panel-parameters" aria-selected="true" tabindex="0">参数调整</button>
+            <button id="tab-diagnostics" class="workspace-tab" type="button" role="tab" aria-controls="panel-diagnostics" aria-selected="false" tabindex="-1">数据诊断</button>
+            <button id="tab-teaching" class="workspace-tab" type="button" role="tab" aria-controls="panel-teaching" aria-selected="false" tabindex="-1">教学说明</button>
+            <button id="tab-video" class="workspace-tab" type="button" role="tab" aria-controls="panel-video" aria-selected="false" tabindex="-1">案例视频</button>
+          </div>
+        </div>
+
+        <div id="panel-parameters" class="workspace-content" role="tabpanel" aria-labelledby="tab-parameters" tabindex="0">
+          <div class="section-heading">
+            <h2 id="parameterHeading">参数实验台</h2>
+            <button class="button button-quiet button-small" id="resetParametersButton" type="button">恢复默认</button>
+          </div>
+          <div class="parameter-grid" role="group" aria-labelledby="parameterHeading">
+            <label class="parameter-control" for="maxRangeInput">
+              <span>显示最大距离 <output id="maxRangeValue">8.0 m</output></span>
+              <input id="maxRangeInput" class="range-control" type="range" min="0.5" max="12" step="0.5" value="8">
+            </label>
+            <label class="parameter-control" for="stopDistanceInput">
+              <span>停止距离 <output id="stopDistanceValue">450 mm</output></span>
+              <input id="stopDistanceInput" class="range-control" type="range" min="200" max="1500" step="50" value="450">
+            </label>
+            <label class="parameter-control" for="turnDistanceInput">
+              <span>转向距离 <output id="turnDistanceValue">800 mm</output></span>
+              <input id="turnDistanceInput" class="range-control" type="range" min="300" max="2500" step="50" value="800">
+            </label>
+            <label class="parameter-control" for="clusterGapInput">
+              <span>聚类间距 <output id="clusterGapValue">180 mm</output></span>
+              <input id="clusterGapInput" class="range-control" type="range" min="50" max="500" step="10" value="180">
+            </label>
+            <label class="parameter-control" for="minClusterPointsInput">
+              <span>最小簇点数 <output id="minClusterPointsValue">3 点</output></span>
+              <input id="minClusterPointsInput" class="range-control" type="range" min="1" max="12" step="1" value="3">
+            </label>
+            <label class="parameter-control" for="frontAngleInput">
+              <span>前方半角 <output id="frontAngleValue">25°</output></span>
+              <input id="frontAngleInput" class="range-control" type="range" min="10" max="60" step="1" value="25">
+            </label>
+            <label class="parameter-control" for="angleOffsetInput">
+              <span>角度偏移 <output id="angleOffsetValue">0°</output></span>
+              <input id="angleOffsetInput" class="range-control" type="range" min="-180" max="180" step="1" value="0">
+            </label>
+            <label class="form-check form-switch parameter-toggle">
+              <input id="invertDirectionInput" class="form-check-input" type="checkbox" role="switch">
+              <span class="form-check-label">反转左右方向</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="panel-diagnostics" class="workspace-content" role="tabpanel" aria-labelledby="tab-diagnostics" tabindex="0" hidden>
+          <article class="sub-card">
+            <div class="section-heading"><h2>实时实测</h2><span class="chip chip-mono" id="deviceVidPid">未选择串口</span></div>
+            <dl class="metrics-list">
+              <div><dt>包总数</dt><dd id="measuredPacketRate">0</dd></div>
+              <div><dt>实测扫描频率</dt><dd id="measuredScanRate">-- Hz</dd></div>
+              <div><dt>有效 / 总采样</dt><dd id="measuredPointStats">0 / 0</dd></div>
+              <div><dt>串口配置</dt><dd>115200 / 8N1</dd></div>
+              <div><dt>强度字段</dt><dd>协议未提供</dd></div>
+              <div><dt>温度 / 固件 / 转速</dt><dd>协议未提供</dd></div>
+            </dl>
+          </article>
+          <article class="sub-card">
+            <div class="section-heading"><h2>当前扫描过程</h2><span class="chip chip-mono" id="liveProgress">--</span></div>
+            <dl class="metrics-list">
+              <div><dt>当前角度</dt><dd id="liveAngle">--</dd></div>
+              <div><dt>当前包</dt><dd id="livePacket">--</dd></div>
+              <div><dt>采样数</dt><dd id="liveSampleCount">--</dd></div>
+              <div><dt>已扫角度</dt><dd id="liveSweep">--</dd></div>
+              <div><dt>方向</dt><dd id="liveDirection">方向待确定</dd></div>
+            </dl>
+            <p class="raw-packet"><span>当前包字段</span><code id="livePacketFields">等待合法数据包</code></p>
+          </article>
+          <article class="sub-card">
+            <div class="section-heading"><h2>数据诊断</h2><span class="chip chip-mono" id="dataAge">-- ms</span></div>
+            <dl class="metrics-list">
+              <div><dt>有效点</dt><dd id="validPointCount">0</dd></div>
+              <div><dt>累计数据包</dt><dd id="packetCount">0</dd></div>
+              <div><dt>本圈包数</dt><dd id="framePacketCount">0</dd></div>
+              <div><dt>校验错误</dt><dd id="checksumErrors">0</dd></div>
+              <div><dt>丢弃字节</dt><dd id="droppedBytes">0</dd></div>
+            </dl>
+            <div class="raw-packet">
+              <span>最近数据包（十六进制）</span>
+              <code id="rawPacket">尚未收到数据</code>
+            </div>
+            <details class="protocol-legend">
+              <summary>字段怎么读</summary>
+              <dl>
+                <div><dt>AA 55</dt><dd>包头，用于在字节流中重新同步。</dd></div>
+                <div><dt>CT / LSN</dt><dd>控制标志 / 本包采样数量。</dd></div>
+                <div><dt>FSA / LSA</dt><dd>起始角 / 结束角，原始值右移 1 后除以 64。</dd></div>
+                <div><dt>CS</dt><dd>16 位 XOR 校验，校验字段本身不参与计算。</dd></div>
+                <div><dt>Si</dt><dd>小端序距离原始值，距离为 Si / 4 毫米。</dd></div>
+              </dl>
+            </details>
+          </article>
+        </div>
+
+        <div id="panel-teaching" class="workspace-content" role="tabpanel" aria-labelledby="tab-teaching" tabindex="0" hidden>
+          <article class="sub-card teaching-spec">
+            <div class="section-heading"><h2>资料规格</h2><span class="chip">参考值</span></div>
+            <p id="deviceSpecSummary">YDLIDAR X3 PRO · 三角测距 · 360° · 参考量程 0.1–8.0m · 无强度字段。参考规格，需以实机复核。</p>
+            <p class="card-note">来源：<a href="https://www.yahboom.com/study/YDLIDAR-X3" target="_blank" rel="noreferrer">Yahboom YDLIDAR-X3 教程</a>；浏览器无法读取完整 Windows 设备名、固件和温度。</p>
+          </article>
+          <section class="sub-card teaching-strip" aria-label="教学边界说明">
+            <h2>本工具演示什么？</h2>
+            <ol class="pipeline" aria-label="数据处理流程">
+              <li>二维测距</li><li>坐标变换</li><li>局部占据证据 / 相邻帧扫描匹配</li><li>几何聚类</li><li>扇区清距</li><li>避障建议</li>
+            </ol>
+            <p class="card-note">建图模式是无里程计的实验性增量建图，不是完整 SLAM；工具不会进行语义物体分类，也不会驱动电机。</p>
+          </section>
+          <section class="sub-card teaching-guide" aria-labelledby="guideHeading">
+            <h2 id="guideHeading">极坐标图示说明</h2>
+            <ul class="scan-visual-guide" aria-label="极坐标图示说明">
+              <li><span class="guide-symbol guide-point-near" aria-hidden="true"></span><span><strong>橙色点</strong>：近距离有效回波</span></li>
+              <li><span class="guide-symbol guide-point-far" aria-hidden="true"></span><span><strong>绿色点</strong>：远距离有效回波</span></li>
+              <li><span class="guide-symbol guide-beam" aria-hidden="true"></span><span><strong>青色射线</strong>：当前真实扫描波束（需在“扫描图层”开启）</span></li>
+              <li><span class="guide-symbol guide-echo" aria-hidden="true"></span><span><strong>白色圆环</strong>：当前包最新回波（需开启）</span></li>
+              <li><span class="guide-symbol guide-sector" aria-hidden="true"></span><span><strong>半透明扇区</strong>：当前包角度范围（需开启）</span></li>
+              <li><span class="guide-symbol guide-invalid" aria-hidden="true"></span><span><strong>橙色叉号</strong>：无效或超量程采样</span></li>
+              <li><span class="guide-symbol guide-ring" aria-hidden="true"></span><span><strong>距离环</strong>：按米读取半径</span></li>
+              <li><span class="guide-symbol guide-axis" aria-hidden="true"></span><span><strong>坐标轴</strong>：0°前、+90°左、-90°右</span></li>
+            </ul>
+          </section>
+        </div>
+
+        <!-- 案例视频：两段本地短片共用一个播放器，切换后同步章节、标记和对应课堂脚本。 -->
+        <div id="panel-video" class="workspace-content" role="tabpanel" aria-labelledby="tab-video" tabindex="0" hidden>
+          <div class="video-picker" role="group" aria-label="选择案例视频">
+            <button class="video-pick" type="button" data-video="g1" aria-pressed="true">
+              <span class="video-pick-title">G1 避障演示</span>
+              <span class="video-pick-meta">0:31 · 横屏 · AI 仿真</span>
+            </button>
+            <button class="video-pick" type="button" data-video="slalom" aria-pressed="false">
+              <span class="video-pick-title">G1 绕桩行走完整演示</span>
+              <span class="video-pick-meta">0:25 · 横屏 · 仿真全程</span>
+            </button>
+            <button class="video-pick" type="button" data-video="gap" aria-pressed="false">
+              <span class="video-pick-title">50 秒看懂缝隙跟随法</span>
+              <span class="video-pick-meta">0:48 · 竖屏 · 算法讲解</span>
+            </button>
+            <button class="video-pick" type="button" data-video="tf" aria-pressed="false">
+              <span class="video-pick-title">50 秒看懂 TF 与坐标的作用</span>
+              <span class="video-pick-meta">0:52 · 竖屏 · 坐标讲解</span>
+            </button>
+            <button class="button button-quiet button-small theater-toggle" id="theaterToggle" type="button" aria-pressed="false">剧场模式</button>
+          </div>
+
+          <div class="video-layout" id="videoLayout">
+            <div class="video-stage" id="videoStage" data-orientation="landscape">
+              <video id="lessonVideo" class="lesson-video" src="/media/g1-avoidance.mp4" controls preload="metadata" playsinline aria-label="案例视频" aria-describedby="videoSource"></video>
+            </div>
+
+            <aside class="sub-card video-side" aria-label="播放辅助">
+              <div class="section-heading"><h2 id="videoHeading">G1 避障演示</h2><span class="chip chip-mono" id="videoDuration">0:31</span></div>
+              <div class="video-tools">
+                <div class="segmented" role="group" aria-label="播放速度">
+                  <button class="segmented-option" type="button" data-rate="0.5" aria-pressed="false">0.5×</button>
+                  <button class="segmented-option" type="button" data-rate="0.75" aria-pressed="false">0.75×</button>
+                  <button class="segmented-option" type="button" data-rate="1" aria-pressed="true">1×</button>
+                </div>
+                <label class="form-check form-switch">
+                  <input id="videoLoopInput" class="form-check-input" type="checkbox" role="switch">
+                  <span class="form-check-label">循环</span>
+                </label>
+              </div>
+              <h3 class="video-side-title" id="chapterHeading">章节</h3>
+              <ol class="video-marks video-chapters" id="videoChapters" aria-labelledby="chapterHeading"></ol>
+              <h3 class="video-side-title" id="markHeading">我的标记</h3>
+              <form class="video-mark-form" id="videoMarkForm">
+                <label class="sr-only" for="videoMarkLabel">标记说明</label>
+                <input id="videoMarkLabel" class="text-control" type="text" maxlength="24" placeholder="标记说明">
+                <button class="button button-small" type="submit">标记此刻</button>
+              </form>
+              <ol class="video-marks" id="videoMarks" aria-labelledby="markHeading"></ol>
+              <p class="card-note" id="videoSource"></p>
+            </aside>
+          </div>
+
+          <div class="lesson-grid" data-lesson="g1">
+            <section class="sub-card lesson-step" aria-labelledby="g1BeforeHeading">
+              <h2 id="g1BeforeHeading"><span class="step-badge">1</span>看前提问 <span class="step-time">2 分钟</span></h2>
+              <ul class="lesson-list">
+                <li>机器人怎么“知道”前面有箱子、有人？</li>
+                <li>我们的 X3 PRO 每个点只给出什么？（提示：距离 + 角度）</li>
+              </ul>
+              <p class="card-note">视频带“AI 仿真演示”水印，是示意动画，不代表 G1 实机的传感器配置。</p>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="g1WatchHeading">
+              <h2 id="g1WatchHeading"><span class="step-badge">2</span>对照观看 <span class="step-time">2 遍 · 约 2 分钟</span></h2>
+              <p>点右侧章节逐段播放，每段对上本工具里的同一环节：</p>
+              <table class="compare-table">
+                <thead><tr><th scope="col">视频</th><th scope="col">本工具对应</th></tr></thead>
+                <tbody>
+                  <tr><td>激光雷达持续扫描</td><td>极坐标图青色扫描射线</td></tr>
+                  <tr><td>测距离和方向</td><td>点位读数：距离、角度、X/Y</td></tr>
+                  <tr><td>规划器选择右侧绕行</td><td>避障建议“右转”</td></tr>
+                  <tr><td>行人进入 · 停步等待</td><td>避障建议“停止”</td></tr>
+                  <tr><td>通路清空 · 恢复行走</td><td>避障建议“前进”</td></tr>
+                </tbody>
+              </table>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="g1LabHeading">
+              <h2 id="g1LabHeading"><span class="step-badge">3</span>上机复现 <span class="step-time">8 分钟</span></h2>
+              <ol class="lesson-list">
+                <li>连接雷达，前方无遮挡，确认建议为“前进”。</li>
+                <li>在前方偏左约 0.6 m 放纸箱：建议是否变为“右转”？</li>
+                <li>一位同学站到正前方 0.4 m 内：是否变为“停止”？</li>
+                <li>同学走开：是否恢复“前进”？每次记下建议和触发规则。</li>
+                <li>把纸箱换成比雷达扫描面更矮的物体，再试一次。</li>
+              </ol>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="g1TalkHeading">
+              <h2 id="g1TalkHeading"><span class="step-badge">4</span>讨论小结 <span class="step-time">3 分钟</span></h2>
+              <ul class="lesson-list">
+                <li>视频里遇箱子绕行、遇行人停步。本工具能分清箱子和人吗？为什么？</li>
+                <li>矮物体为什么没被“看到”？单线雷达只扫描一个平面。</li>
+                <li>视频说“持续更新路线”，对应本工具每扫一圈重新判断一次。</li>
+              </ul>
+              <p class="card-note">本工具只按几何距离给建议，不识别人或物体，也不控制电机。</p>
+            </section>
+          </div>
+
+          <div class="lesson-grid" data-lesson="slalom" hidden>
+            <section class="sub-card lesson-step" aria-labelledby="slalomBeforeHeading">
+              <h2 id="slalomBeforeHeading"><span class="step-badge">1</span>看前提问 <span class="step-time">2 分钟</span></h2>
+              <ul class="lesson-list">
+                <li>绕过一排桩，机器人每一步需要知道哪三件事？（桩在哪、自己在哪、往哪走）</li>
+                <li>左侧“G1 避障仿真”只给一次建议，绕完一整排桩还缺什么？</li>
+              </ul>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="slalomWatchHeading">
+              <h2 id="slalomWatchHeading"><span class="step-badge">2</span>对照观看 <span class="step-time">2 遍 · 约 2 分钟</span></h2>
+              <p>第二遍盯住画面左上角的数据：</p>
+              <table class="compare-table">
+                <thead><tr><th scope="col">字段</th><th scope="col">含义</th></tr></thead>
+                <tbody>
+                  <tr><td>TRAINED BC NAVIGATOR</td><td>行为克隆导航器：模仿示范数据学会的走法</td></tr>
+                  <tr><td>t</td><td>仿真时间（秒）</td></tr>
+                  <tr><td>x / y</td><td>机器人相对出发点的位置（米），对照 TF 视频</td></tr>
+                  <tr><td>collision / fall</td><td>是否碰桩、是否摔倒</td></tr>
+                  <tr><td>success</td><td>越过绿色终点线后变为 True</td></tr>
+                </tbody>
+              </table>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="slalomLabHeading">
+              <h2 id="slalomLabHeading"><span class="step-badge">3</span>上机复现 <span class="step-time">8 分钟</span></h2>
+              <ol class="lesson-list">
+                <li>用 3 个纸筒或水瓶，在雷达前方左右交错摆成一排桩，间隔约 0.8 m。</li>
+                <li>看“G1 避障仿真”：桩变成橙/红柱，G1 预演往哪边走？</li>
+                <li>依次拿走最近的桩，模拟“绕过了一根”，每次记下建议。</li>
+                <li>把这串建议连起来，和视频里 G1 的实际路线比较。</li>
+              </ol>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="slalomTalkHeading">
+              <h2 id="slalomTalkHeading"><span class="step-badge">4</span>讨论小结 <span class="step-time">3 分钟</span></h2>
+              <ul class="lesson-list">
+                <li>本工具用固定规则给出“下一步”；视频里的导航器连续输出走向。各有什么优缺点？</li>
+                <li>为什么要同时记录 collision、fall 和 success？只看 success 够吗？</li>
+                <li>仿真里成功，真机就一定成功吗？还差哪些环节？</li>
+              </ul>
+              <p class="card-note">视频为仿真录屏，章节时间按画面整理；本工具的 G1 仿真只预演单次建议，不包含该导航器。</p>
+            </section>
+          </div>
+
+          <div class="lesson-grid" data-lesson="gap" hidden>
+            <section class="sub-card lesson-step" aria-labelledby="lessonBeforeHeading">
+              <h2 id="lessonBeforeHeading"><span class="step-badge">1</span>看前提问 <span class="step-time">2 分钟</span></h2>
+              <p>先打开“教学说明”回顾：本工具把前方、左侧、右侧分成三个固定扇区，只比较三个距离。</p>
+              <ul class="lesson-list">
+                <li>如果前方有两张椅子，中间留一条缝，三扇区法会怎么判断？</li>
+                <li>机器人想“钻缝”，除了缝在哪，还需要知道什么？</li>
+              </ul>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="lessonWatchHeading">
+              <h2 id="lessonWatchHeading"><span class="step-badge">2</span>对照观看 <span class="step-time">2 遍 · 约 3 分钟</span></h2>
+              <p>第一遍完整看；第二遍用 0.5× 播放，在每一步出现时点“标记此刻”。</p>
+              <ol class="gap-steps">
+                <li><strong>限距</strong>：太远或无效的读数截断，只关心近处。</li>
+                <li><strong>找最近点</strong>：这是最危险的障碍。</li>
+                <li><strong>安全气泡</strong>：把最近点周围车身半径内的读数清零。</li>
+                <li><strong>最大缝隙</strong>：找连续最长的“非零”角度区间。</li>
+                <li><strong>选目标方向</strong>：取缝隙中最远点或中心，转向它。</li>
+              </ol>
+              <p class="card-note">以上是该方法的常见步骤，具体以视频讲解为准，可按视频修改标记。</p>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="lessonLabHeading">
+              <h2 id="lessonLabHeading"><span class="step-badge">3</span>上机对比 <span class="step-time">8 分钟</span></h2>
+              <ol class="lesson-list">
+                <li>用两个纸箱在雷达前 0.6–1 m 处摆出一条缝，连接雷达。</li>
+                <li>在极坐标图里用肉眼找“最大缝隙”，读出它的角度范围。</li>
+                <li>点缝隙两侧的点，在“点位读数”中记下两端距离和角度，估算缝宽。</li>
+                <li>记下左侧栏“避障建议”。它与缝隙跟随会选同一个方向吗？</li>
+                <li>把缝收窄到比机器人还窄，再比较一次。</li>
+              </ol>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="lessonTalkHeading">
+              <h2 id="lessonTalkHeading"><span class="step-badge">4</span>讨论小结 <span class="step-time">3 分钟</span></h2>
+              <table class="compare-table">
+                <thead><tr><th scope="col"></th><th scope="col">三扇区法（本工具）</th><th scope="col">缝隙跟随法</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">看什么</th><td>三个扇区的最近距离</td><td>每个角度的连续可通行区间</td></tr>
+                  <tr><th scope="row">输出</th><td>前进 / 左转 / 右转 / 停止</td><td>一个具体的目标角度</td></tr>
+                  <tr><th scope="row">优点</th><td>规则少，容易解释</td><td>能发现窄缝，转向更平滑</td></tr>
+                  <tr><th scope="row">风险</th><td>缝被扇区“平均”掉</td><td>气泡太小会擦碰，缝隙会跳变</td></tr>
+                </tbody>
+              </table>
+              <p class="card-note">本工具未实现缝隙跟随，以上对比由学生观察完成；工具仍不会控制电机。</p>
+            </section>
+          </div>
+
+          <div class="lesson-grid" data-lesson="tf" hidden>
+            <section class="sub-card lesson-step" aria-labelledby="tfBeforeHeading">
+              <h2 id="tfBeforeHeading"><span class="step-badge">1</span>看前提问 <span class="step-time">2 分钟</span></h2>
+              <ul class="lesson-list">
+                <li>“点位读数”里的 X（前）、Y（左）是相对谁说的？</li>
+                <li>箱子不动，只把雷达转个方向，箱子的 X/Y 会变吗？</li>
+              </ul>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="tfWatchHeading">
+              <h2 id="tfWatchHeading"><span class="step-badge">2</span>对照观看 <span class="step-time">2 遍 · 约 3 分钟</span></h2>
+              <p>视频结尾：“一个位置，四种说法，TF 负责翻译”。对照本工具：</p>
+              <table class="compare-table">
+                <thead><tr><th scope="col">视频中的坐标</th><th scope="col">本工具对应</th></tr></thead>
+                <tbody>
+                  <tr><td>相机坐标</td><td>无相机；类比雷达原始角度 + 距离</td></tr>
+                  <tr><td>车身坐标</td><td>“角度偏移 / 反转左右”把雷达读数转到车身朝向</td></tr>
+                  <tr><td>雷达（TF 树多一枝）</td><td>lidar_link：极坐标图和局部图的 X/Y</td></tr>
+                  <tr><td>出发点 / 地图</td><td>实验性建图：以第一帧为起点估计位姿</td></tr>
+                </tbody>
+              </table>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="tfLabHeading">
+              <h2 id="tfLabHeading"><span class="step-badge">3</span>上机复现 <span class="step-time">8 分钟</span></h2>
+              <ol class="lesson-list">
+                <li>纸箱放雷达正前方约 1 m，点选它，记下角度、X、Y。</li>
+                <li>箱子不动，把雷达原地转约 90°，再点选：X/Y 变成多少？</li>
+                <li>调“参数调整 → 角度偏移”，直到箱子回到正前方，记下偏移值。这就是一次手动的坐标“翻译”。</li>
+                <li>打开“反转左右方向”，看 Y 的正负怎么变。</li>
+                <li>地图切到“实验性建图”并开始，缓慢平移雷达：箱子在地图中是否基本留在原处？</li>
+              </ol>
+            </section>
+
+            <section class="sub-card lesson-step" aria-labelledby="tfTalkHeading">
+              <h2 id="tfTalkHeading"><span class="step-badge">4</span>讨论小结 <span class="step-time">3 分钟</span></h2>
+              <ul class="lesson-list">
+                <li>为什么“东西没动，车身坐标却一直变”？要描述不动的东西该选哪个原点？</li>
+                <li>本工具里一个点经历了哪几次“翻译”？（原始角度 → 三角修正 → 角度偏移 → X/Y）</li>
+                <li>视频里“坐标没错，是认错了”：坐标变换能解决识别错误吗？</li>
+              </ul>
+              <p class="card-note">本工具没有 ROS TF 树，只用角度偏移和左右反转演示最简单的二维变换；建图位姿为实验性估计。</p>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="console-footer">YDLIDAR X3 PRO · 二维测距与几何避障教学工具 · 仅提供几何建议，不控制电机</footer>
+
+    <!-- 页签与折叠交互只负责展示；app.js 启动串口、分析和 Canvas 绘制流程。 -->
+    <script type="module" src="/js/app.js"></script>
+    <!-- 案例视频独立加载，即使浏览器不支持 Web Serial 也能播放。 -->
+    <script type="module" src="/js/video-lesson.js"></script>
+  </body>
+</html>

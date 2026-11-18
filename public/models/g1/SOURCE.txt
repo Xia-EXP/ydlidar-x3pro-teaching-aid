@@ -1,0 +1,5 @@
+Unitree G1 (29 DoF) robot description
+Source: https://github.com/unitreerobotics/unitree_ros/tree/master/robots/g1_description
+Files: g1_29dof.urdf and the 36 meshes it references, unmodified.
+License: BSD 3-Clause (see LICENSE), Copyright (c) 2016-2022 HangZhou YuShu TECHNOLOGY CO.,LTD. ("Unitree Robotics").
+Retrieved: 2026-10-13
