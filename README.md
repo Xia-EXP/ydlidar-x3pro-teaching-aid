@@ -26,7 +26,7 @@
 
 ### Windows 傻瓜式启动
 
-1. 获取分享的 `YDLIDAR-X3PRO-portable-v0.1.3-win-x64.zip`，完整解压到普通文件夹，不要在压缩包预览窗口里直接运行。适用于 Windows 10/11 x64。
+1. 获取分享的 `YDLIDAR-X3PRO-portable-v0.1.4-win-x64.zip`，完整解压到普通文件夹，不要在压缩包预览窗口里直接运行。适用于 Windows 10/11 x64。
 2. 双击 `一键启动.cmd`（或 `one-click-start.cmd`），等待环境自检和 Edge 页面打开。退出时先断开设备，再在命令窗口按 Enter。简明操作见 `使用说明.txt`。
 3. 在 Edge 页面点击“选择串口”并授权实际的 COM 口，再点击“连接”。
 
@@ -38,7 +38,14 @@
 powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
-启动器会自动检查运行时、Edge 和本地服务端口。源码包缺少 Node 时，可以经用户确认调用 `winget` 补装；安装完成后需重新运行启动器。发布包优先使用自身的 `runtime/node.exe`，不修改系统 PATH。
+双击启动时会自动检查 Node.js 和 Edge，显示 Windows 当前的 COM 口及识别到的 USB 串口候选，并从 5173–5193 中选择可用的本地服务端口。未插雷达也能启动并使用演示功能。发布包优先使用自身的 `runtime/node.exe`，不修改系统 PATH。
+
+在项目目录运行以下命令，可单独查看环境报告，或按需补装缺少的 Node.js 和 Edge。安装完成后重新运行启动器。
+
+```powershell
+.\one-click-start.cmd -CheckOnly
+.\one-click-start.cmd -Repair
+```
 
 启动器不会自动安装 USB 驱动、不会替用户选择 COM 口，也不会自动发送雷达启停命令；这三件事涉及具体转接板和设备安全，必须由使用者确认。
 

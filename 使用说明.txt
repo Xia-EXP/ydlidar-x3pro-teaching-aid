@@ -1,5 +1,5 @@
-﻿YDLIDAR X3 PRO 雷达控制台 v0.1.3
-Windows 便携版 · 2026-10-14
+﻿YDLIDAR X3 PRO 雷达控制台 v0.1.4
+Windows 便携版 · 2026-11-18
 
 给其他电脑使用
 1. 把整个 ZIP 压缩包复制到目标电脑。
@@ -8,6 +8,10 @@ Windows 便携版 · 2026-10-14
 4. 等待环境检查结束，Microsoft Edge 会自动打开雷达控制台。
 5. 保持启动窗口运行。在网页点击“选择串口”，选择实际雷达转接板，再点击“连接”。
 6. 使用结束后，先在网页点击“断开”，再回到启动窗口按回车结束服务。
+
+启动窗口会显示 Windows 当前的 COM 口和 USB 串口候选。
+运行 one-click-start.cmd -CheckOnly 可仅查看检测结果。
+运行 one-click-start.cmd -Repair 可按需补装 Node.js 或 Edge。
 
 电脑要求
 - Windows 10/11，64 位 Intel/AMD（x64）。本包不适用于 macOS 或 Linux。

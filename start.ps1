@@ -1,5 +1,5 @@
 ﻿# Repair 显式请求环境修复；NoBrowser 供便携包自动验收时使用，正常双击仍打开 Edge。
-param([switch]$Repair, [switch]$NoBrowser)
+param([switch]$Repair, [switch]$NoBrowser, [switch]$CheckOnly) # CheckOnly reports the environment without opening the app.
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -9,7 +9,8 @@ $environmentScript = Join-Path $projectRoot "scripts\check-environment.ps1"
 $checkerArguments = @()
 if ($Repair) { $checkerArguments += "-Repair" }
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $environmentScript @checkerArguments
-if ($LASTEXITCODE -eq 2) { exit 0 }
+$checkResult = $LASTEXITCODE # Keep the check result before running any other native command.
+if ($CheckOnly -or $checkResult -eq 2) { exit $checkResult } # Preserve the restart-required exit code after winget repairs.
 if ($LASTEXITCODE -ne 0) {
     $answer = Read-Host "Environment is not ready. Try winget repair now? (Y/N)"
     if ($answer -notmatch "^(Y|y)$") { exit 1 }
