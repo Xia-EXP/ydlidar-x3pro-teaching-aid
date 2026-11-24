@@ -890,3 +890,10 @@ function loadG1Sim() {
 }
 
 initialize();
+
+fetch("/health")
+  .then((response) => response.json())
+  .then(({ version }) => {
+    if (version) document.getElementById("appVersion").textContent = " · v" + version;
+  })
+  .catch(() => {});

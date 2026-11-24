@@ -1,6 +1,6 @@
 {
   "name": "ydlidar-x3pro-teaching-aid",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": false,
   "description": "YDLIDAR X3 PRO Windows teaching aid using Edge Web Serial",
   "type": "module",

@@ -14,76 +14,43 @@ const theaterToggle = document.getElementById('theaterToggle');
 const pickButtons = [...document.querySelectorAll('[data-video]')];
 const rateButtons = [...document.querySelectorAll('[data-rate]')];
 
-// 视频清单；章节时间来自视频内嵌字幕，缝隙跟随法短片没有字幕，由教师自行标记。
+// 四段原创建议图解均为 24 秒，每 6 秒切换一章。
+const ORIGINAL_SOURCE = '本项目原创教学动画，使用示意场景。';
 const VIDEOS = {
   g1: {
     src: '/media/g1-avoidance.mp4',
     title: 'G1 避障演示',
-    duration: '0:31',
-    orientation: 'landscape',
-    source: '视频带“AI 仿真演示”水印，为示意动画，仅用于课堂演示。',
+    source: ORIGINAL_SOURCE + ' 用于说明三扇区几何建议。',
     placeholder: '标记说明，如：开始绕行',
-    chapters: [
-      { time: 0, label: '机器人行走' },
-      { time: 2, label: '激光雷达持续扫描' },
-      { time: 6, label: '测量障碍物距离和方向' },
-      { time: 10, label: '规划器选择右侧绕行' },
-      { time: 16, label: '执行步态，持续更新路线' },
-      { time: 21, label: '行人进入路线 · 停步等待' },
-      { time: 27, label: '通路清空 · 恢复行走' },
-    ],
+    chapters: ['前方通畅', '左前方受阻', '进入停止距离', '通路恢复'],
   },
   slalom: {
     src: '/media/g1-slalom.mp4',
-    title: 'G1 绕桩行走完整演示',
-    duration: '0:25',
-    orientation: 'landscape',
-    source: '仿真录屏：Unitree G1 + 训练得到的行为克隆导航器（slalom 场景），仅用于课堂演示。',
+    title: 'G1 绕桩路径示意',
+    source: ORIGINAL_SOURCE + ' 路线为示意，不含真实步态。',
     placeholder: '标记说明，如：绕过第二根桩',
-    chapters: [
-      { time: 0, label: '起步，桩在前方' },
-      { time: 2, label: '接近第一根桩' },
-      { time: 8, label: '在桩之间穿行' },
-      { time: 15, label: '绿色终点线进入视野' },
-      { time: 21, label: '绕过最后一根桩' },
-      { time: 24, label: '越过终点线 · success=True' },
-    ],
+    chapters: ['定位第一根桩', '绕过第一根桩', '交替选边', '到达终点'],
   },
   gap: {
     src: '/media/gap-following.mp4',
-    title: '50 秒看懂缝隙跟随法',
-    duration: '0:48',
-    orientation: 'portrait',
-    source: '来源：道化之华《50 秒看懂缝隙跟随法》，仅用于课堂演示。',
+    title: '缝隙跟随法',
+    source: ORIGINAL_SOURCE + ' 用于对照三扇区法。',
     placeholder: '标记说明，如：找最近点',
-    chapters: [],
+    chapters: ['读取与限距', '找最近点', '划出安全范围', '选缝与目标方向'],
   },
   tf: {
     src: '/media/tf-frames.mp4',
-    title: '50 秒看懂 TF 与坐标的作用',
-    duration: '0:52',
-    orientation: 'portrait',
-    source: '来源：道化之华《50 秒看懂 TF 与坐标的作用》，仅用于课堂演示。',
+    title: 'TF 与坐标',
+    source: ORIGINAL_SOURCE + ' 点的位置以三个参考系描述。',
     placeholder: '标记说明，如：换成车身坐标',
-    chapters: [
-      { time: 0, label: '雷达在，我在哪都清楚' },
-      { time: 3, label: '雷达被拿走，眼睛还在' },
-      { time: 9, label: '相机坐标：它在我右前方' },
-      { time: 12, label: '先换成车身坐标' },
-      { time: 17, label: '杯盖？坐标没错，是认错了' },
-      { time: 22, label: '箱子挡路，看不见了' },
-      { time: 26, label: '东西没动，车身坐标一直变' },
-      { time: 30, label: '换不跟车走的原点：出发点、地图' },
-      { time: 35, label: 'TF 每一刻都在换算' },
-      { time: 43, label: '找到了，装回雷达：TF 树多一枝' },
-      { time: 47, label: '一个位置，四种说法' },
-    ],
+    chapters: ['雷达读数', '转到车身坐标', '转到地图坐标', '核对固定障碍'],
   },
 };
 
 let currentId = 'g1';
 let marks = [];
-const storageKey = (id) => `ydlidar.videoMarks.${id === 'gap' ? 'gap-following' : id}`;
+// 教学短片更新后使用新的标记命名空间，旧版时间戳仍留在浏览器中。
+const storageKey = (id) => 'ydlidar.videoMarks.original.' + id;
 
 // 读取本机保存的标记；存储损坏或被禁用时退回空列表，不影响播放。
 function loadMarks(id) {
@@ -129,7 +96,7 @@ function makeJumpButton(mark) {
 }
 
 function renderChapters() {
-  const { chapters } = VIDEOS[currentId];
+  const chapters = VIDEOS[currentId].chapters.map((label, index) => ({ time: index * 6, label }));
   chapterList.hidden = chapters.length === 0;
   chapterList.previousElementSibling.hidden = chapters.length === 0;
   chapterList.replaceChildren(...chapters.map((chapter) => {
@@ -175,9 +142,9 @@ function selectVideo(id) {
     video.src = info.src;
     video.playbackRate = Number(rateButtons.find((button) => button.getAttribute('aria-pressed') === 'true')?.dataset.rate ?? 1);
   }
-  stage.dataset.orientation = info.orientation;
+  stage.dataset.orientation = 'landscape';
   heading.textContent = info.title;
-  durationChip.textContent = info.duration;
+  durationChip.textContent = '0:24';
   source.textContent = `${info.source}标记保存在本机浏览器。`;
   markLabel.placeholder = info.placeholder;
   for (const button of pickButtons) button.setAttribute('aria-pressed', String(button.dataset.video === id));

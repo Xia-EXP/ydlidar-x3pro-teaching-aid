@@ -403,24 +403,24 @@
           </section>
         </div>
 
-        <!-- 案例视频：两段本地短片共用一个播放器，切换后同步章节、标记和对应课堂脚本。 -->
+        <!-- 案例视频：四段本地短片共用一个播放器，切换后同步章节、标记和对应课堂脚本。 -->
         <div id="panel-video" class="workspace-content" role="tabpanel" aria-labelledby="tab-video" tabindex="0" hidden>
           <div class="video-picker" role="group" aria-label="选择案例视频">
             <button class="video-pick" type="button" data-video="g1" aria-pressed="true">
               <span class="video-pick-title">G1 避障演示</span>
-              <span class="video-pick-meta">0:31 · 横屏 · AI 仿真</span>
+              <span class="video-pick-meta">0:24 · 避障规则</span>
             </button>
             <button class="video-pick" type="button" data-video="slalom" aria-pressed="false">
-              <span class="video-pick-title">G1 绕桩行走完整演示</span>
-              <span class="video-pick-meta">0:25 · 横屏 · 仿真全程</span>
+              <span class="video-pick-title">G1 绕桩路径示意</span>
+              <span class="video-pick-meta">0:24 · 路径示意</span>
             </button>
             <button class="video-pick" type="button" data-video="gap" aria-pressed="false">
-              <span class="video-pick-title">50 秒看懂缝隙跟随法</span>
-              <span class="video-pick-meta">0:48 · 竖屏 · 算法讲解</span>
+              <span class="video-pick-title">缝隙跟随法</span>
+              <span class="video-pick-meta">0:24 · 算法讲解</span>
             </button>
             <button class="video-pick" type="button" data-video="tf" aria-pressed="false">
-              <span class="video-pick-title">50 秒看懂 TF 与坐标的作用</span>
-              <span class="video-pick-meta">0:52 · 竖屏 · 坐标讲解</span>
+              <span class="video-pick-title">TF 与坐标</span>
+              <span class="video-pick-meta">0:24 · 坐标讲解</span>
             </button>
             <button class="button button-quiet button-small theater-toggle" id="theaterToggle" type="button" aria-pressed="false">剧场模式</button>
           </div>
@@ -431,7 +431,7 @@
             </div>
 
             <aside class="sub-card video-side" aria-label="播放辅助">
-              <div class="section-heading"><h2 id="videoHeading">G1 避障演示</h2><span class="chip chip-mono" id="videoDuration">0:31</span></div>
+              <div class="section-heading"><h2 id="videoHeading">G1 避障演示</h2><span class="chip chip-mono" id="videoDuration">0:24</span></div>
               <div class="video-tools">
                 <div class="segmented" role="group" aria-label="播放速度">
                   <button class="segmented-option" type="button" data-rate="0.5" aria-pressed="false">0.5×</button>
@@ -463,7 +463,7 @@
                 <li>机器人怎么“知道”前面有箱子、有人？</li>
                 <li>我们的 X3 PRO 每个点只给出什么？（提示：距离 + 角度）</li>
               </ul>
-              <p class="card-note">视频带“AI 仿真演示”水印，是示意动画，不代表 G1 实机的传感器配置。</p>
+              <p class="card-note">动画用二维示意图演示前进、转向和停步。</p>
             </section>
 
             <section class="sub-card lesson-step" aria-labelledby="g1WatchHeading">
@@ -497,7 +497,7 @@
               <ul class="lesson-list">
                 <li>视频里遇箱子绕行、遇行人停步。本工具能分清箱子和人吗？为什么？</li>
                 <li>矮物体为什么没被“看到”？单线雷达只扫描一个平面。</li>
-                <li>视频说“持续更新路线”，对应本工具每扫一圈重新判断一次。</li>
+                <li>动画中的“通路恢复”对应本工具收到新一圈扫描后重新判断。</li>
               </ul>
               <p class="card-note">本工具只按几何距离给建议，不识别人或物体，也不控制电机。</p>
             </section>
@@ -508,21 +508,19 @@
               <h2 id="slalomBeforeHeading"><span class="step-badge">1</span>看前提问 <span class="step-time">2 分钟</span></h2>
               <ul class="lesson-list">
                 <li>绕过一排桩，机器人每一步需要知道哪三件事？（桩在哪、自己在哪、往哪走）</li>
-                <li>左侧“G1 避障仿真”只给一次建议，绕完一整排桩还缺什么？</li>
+                <li>“G1 避障仿真”每次预演一条建议，绕完一整排桩还缺什么？</li>
               </ul>
             </section>
 
             <section class="sub-card lesson-step" aria-labelledby="slalomWatchHeading">
               <h2 id="slalomWatchHeading"><span class="step-badge">2</span>对照观看 <span class="step-time">2 遍 · 约 2 分钟</span></h2>
-              <p>第二遍盯住画面左上角的数据：</p>
+              <p>第二遍观察路线、桩和当前位置：</p>
               <table class="compare-table">
                 <thead><tr><th scope="col">字段</th><th scope="col">含义</th></tr></thead>
                 <tbody>
-                  <tr><td>TRAINED BC NAVIGATOR</td><td>行为克隆导航器：模仿示范数据学会的走法</td></tr>
-                  <tr><td>t</td><td>仿真时间（秒）</td></tr>
-                  <tr><td>x / y</td><td>机器人相对出发点的位置（米），对照 TF 视频</td></tr>
-                  <tr><td>collision / fall</td><td>是否碰桩、是否摔倒</td></tr>
-                  <tr><td>success</td><td>越过绿色终点线后变为 True</td></tr>
+                  <tr><td>橙色圆点</td><td>交错放置的桩</td></tr>
+                  <tr><td>白色圆点</td><td>当前示意位置</td></tr>
+                  <tr><td>青色线</td><td>已经走过的路线及终点线</td></tr>
                 </tbody>
               </table>
             </section>
@@ -533,18 +531,18 @@
                 <li>用 3 个纸筒或水瓶，在雷达前方左右交错摆成一排桩，间隔约 0.8 m。</li>
                 <li>看“G1 避障仿真”：桩变成橙/红柱，G1 预演往哪边走？</li>
                 <li>依次拿走最近的桩，模拟“绕过了一根”，每次记下建议。</li>
-                <li>把这串建议连起来，和视频里 G1 的实际路线比较。</li>
+                <li>把这串建议连起来，和动画里的示例路线比较。</li>
               </ol>
             </section>
 
             <section class="sub-card lesson-step" aria-labelledby="slalomTalkHeading">
               <h2 id="slalomTalkHeading"><span class="step-badge">4</span>讨论小结 <span class="step-time">3 分钟</span></h2>
               <ul class="lesson-list">
-                <li>本工具用固定规则给出“下一步”；视频里的导航器连续输出走向。各有什么优缺点？</li>
-                <li>为什么要同时记录 collision、fall 和 success？只看 success 够吗？</li>
-                <li>仿真里成功，真机就一定成功吗？还差哪些环节？</li>
+                <li>每步都重新观察和开走前一次选好路线，各有什么优缺点？</li>
+                <li>验证实机绕桩时，除了到达终点，还要观察哪些现象？</li>
+                <li>路线能走通，还要验证哪些实机条件？</li>
               </ul>
-              <p class="card-note">视频为仿真录屏，章节时间按画面整理；本工具的 G1 仿真只预演单次建议，不包含该导航器。</p>
+              <p class="card-note">动画讲解的是绕桩路线，控制台的 G1 视图用于预演当前一条几何建议。</p>
             </section>
           </div>
 
@@ -608,13 +606,12 @@
 
             <section class="sub-card lesson-step" aria-labelledby="tfWatchHeading">
               <h2 id="tfWatchHeading"><span class="step-badge">2</span>对照观看 <span class="step-time">2 遍 · 约 3 分钟</span></h2>
-              <p>视频结尾：“一个位置，四种说法，TF 负责翻译”。对照本工具：</p>
+              <p>观察固定障碍在雷达、车身和地图坐标系里的位置，再对照本工具。</p>
               <table class="compare-table">
                 <thead><tr><th scope="col">视频中的坐标</th><th scope="col">本工具对应</th></tr></thead>
                 <tbody>
-                  <tr><td>相机坐标</td><td>无相机；类比雷达原始角度 + 距离</td></tr>
-                  <tr><td>车身坐标</td><td>“角度偏移 / 反转左右”把雷达读数转到车身朝向</td></tr>
-                  <tr><td>雷达（TF 树多一枝）</td><td>lidar_link：极坐标图和局部图的 X/Y</td></tr>
+                  <tr><td>雷达坐标</td><td>极坐标图的距离、角度及 X/Y</td></tr>
+                  <tr><td>车身坐标</td><td>“角度偏移”可用来演示安装朝向的换算</td></tr>
                   <tr><td>出发点 / 地图</td><td>实验性建图：以第一帧为起点估计位姿</td></tr>
                 </tbody>
               </table>
@@ -636,7 +633,7 @@
               <ul class="lesson-list">
                 <li>为什么“东西没动，车身坐标却一直变”？要描述不动的东西该选哪个原点？</li>
                 <li>本工具里一个点经历了哪几次“翻译”？（原始角度 → 三角修正 → 角度偏移 → X/Y）</li>
-                <li>视频里“坐标没错，是认错了”：坐标变换能解决识别错误吗？</li>
+                <li>坐标变换能解决错误的测距读数吗？</li>
               </ul>
               <p class="card-note">本工具没有 ROS TF 树，只用角度偏移和左右反转演示最简单的二维变换；建图位姿为实验性估计。</p>
             </section>
@@ -645,7 +642,7 @@
       </section>
     </main>
 
-    <footer class="console-footer">YDLIDAR X3 PRO · 二维测距与几何避障教学工具 · 仅提供几何建议，不控制电机</footer>
+    <footer class="console-footer">YDLIDAR X3 PRO · 二维测距与几何避障教学工具 · 仅提供几何建议，不控制机器人电机<span id="appVersion"></span></footer>
 
     <!-- 页签与折叠交互只负责展示；app.js 启动串口、分析和 Canvas 绘制流程。 -->
     <script type="module" src="/js/app.js"></script>

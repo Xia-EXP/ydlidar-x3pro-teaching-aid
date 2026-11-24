@@ -11,6 +11,7 @@ if ($LASTEXITCODE -ne 0) { throw "Automated tests failed." } # PowerShell 的 St
 
 # Start a temporary service and stop only the process created by this script.
 $port = 5199
+$package = Get-Content -LiteralPath "package.json" -Raw | ConvertFrom-Json
 $server = Start-Process -FilePath "node" -ArgumentList @("server.mjs", "--port", "$port") -WorkingDirectory (Get-Location) -PassThru -WindowStyle Hidden
 try {
     $healthUrl = "http://127.0.0.1:$port/health"
@@ -23,6 +24,8 @@ try {
         } catch { }
     }
     if (-not $ready) { throw "Temporary service did not start." }
+    $runningPackage = $health.Content | ConvertFrom-Json
+    if ($runningPackage.version -ne $package.version) { throw "Running version does not match package.json." }
     # 同时检查控制台样式和展示模块，避免发布包遗漏新界面依赖而导致初始化失败。
     $resourcePaths = @("/", "/health", "/styles.css", "/console.css", "/js/console-layout.js", "/js/app.js", "/js/protocol.js", "/js/render.js", "/js/device-profile.js", "/js/video-lesson.js", "/js/g1-sim.js", "/vendor/three/three.module.js", "/vendor/three/three.core.js", "/vendor/three/addons/loaders/STLLoader.js", "/vendor/three/addons/controls/OrbitControls.js", "/models/g1/g1_29dof.urdf", "/models/g1/meshes/pelvis.STL")
     foreach ($resourcePath in $resourcePaths) {

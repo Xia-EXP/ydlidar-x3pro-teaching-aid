@@ -62,11 +62,12 @@ try {
 
     # Copy an explicit allowlist so local documents, logs and device data cannot leak into the release.
     # 将中文入口、普通用户说明和版本记录列入明确的发布白名单。
-    foreach ($file in @("server.mjs", "start.ps1", "README.md", "MODULES.md", "package.json", "one-click-start.cmd", "一键启动.cmd", "使用说明.txt", "RELEASE-NOTES.md")) {
+    foreach ($file in @("server.mjs", "start.ps1", "README.md", "MODULES.md", "package.json", "one-click-start.cmd", "一键启动.cmd", "使用说明.txt", "RELEASE-NOTES.md", "请先阅读.html", "交付清单.html")) {
         $source = Join-Path $projectRoot $file
         if (-not (Test-Path -LiteralPath $source)) { throw "Required release file missing: $file" }
         Copy-Item -LiteralPath $source -Destination (Join-Path $stagingRoot $file)
     }
+    Copy-Item -LiteralPath (Join-Path $projectRoot "docs") -Destination (Join-Path $stagingRoot "docs") -Recurse
     Copy-Item -LiteralPath (Join-Path $projectRoot "public") -Destination (Join-Path $stagingRoot "public") -Recurse
     # 同时包含维护脚本和自动化测试，使便携包中的源码与 package.json 命令一致。
     foreach ($directory in @("scripts", "test")) { Copy-Item -LiteralPath (Join-Path $projectRoot $directory) -Destination (Join-Path $stagingRoot $directory) -Recurse } # 仅复制已审阅的源码目录。

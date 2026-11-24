@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>使用手册 · YDLIDAR X3 PRO</title>
+<link rel="stylesheet" href="delivery.css">
+</head>
+<body>
+<main>
+<p class="meta">YDLIDAR X3 PRO · v0.1.5 · 2026-11-24</p>
+<h1>使用手册</h1>
+<h2>1. 准备并启动</h2>
+<p>在 Windows 10/11 x64 电脑准备 Microsoft Edge。把 <code>YDLIDAR-X3PRO-portable-v0.1.5-win-x64.zip</code> 完整解压到可写目录。回到上一级启动 <code>一键启动.cmd</code>，英文入口为 <code>one-click-start.cmd</code>。等待 Edge 打开，控制台页尾显示 <code>v0.1.5</code>。启动窗口运行期间，页面使用其显示的 <code>127.0.0.1</code> 地址。</p>
+<h2>2. 无雷达时先播放一个案例</h2>
+<p>滚动到页面下方，点“案例视频”，选“G1 避障演示”，点播放，再点“进入停止距离”章节。正常时播放器跳到 00:12 附近，画面显示红色停止提示。还可选择 0.5× 慢放、输入名称后点“标记此刻”，或开启剧场模式并按 Esc 退出。</p>
+<h2>3. 连接 X3 PRO</h2>
+<ol>
+<li>按适配器和雷达接线说明连接。使用匹配的 5V 供电和转接板驱动，在设备管理器记下实际 COM 号。</li>
+<li>在控制台“设备连接”点“选择串口”，授权对应端口，再点“连接”。连接设置默认 115200、8N1、无流控。按转接板说明决定是否启用 DTR。</li>
+<li>如果设备已连但未主动出数，点“开始扫描”。正常时状态为“正在接收雷达扫描”，极坐标图随扫描更新。“数据诊断”中的包数和有效点反映输入情况。</li>
+<li>将纸箱放在已知距离，点选回波，读取角度、距离和 X/Y。移开纸箱，观察图和避障建议变化。固定局部图用于静止雷达，重新摆放后先清空旧图。</li>
+</ol>
+<h2>4. 结束与迁移</h2>
+<p>应用启动过扫描时先点“停止扫描”，再点“断开”，回到启动窗口按 Enter，关闭 Edge 页面。升级时把新版独立解压。移动便携版时请在退出后移动整个目录。</p>
+<p>案例标记存于当前 Edge 用户配置和本地服务地址。用原配置和端口重启可继续查看，换端口或浏览器配置时会看到另一份记录。v0.1.5 动画已更换，旧版时间标记仍留在旧版浏览器记录中。地图和实验参数用于当前会话。</p>
+<h2>常见问题</h2>
+<div class="table-wrap"><table><thead><tr><th>现象</th><th>排查方法</th></tr></thead><tbody>
+<tr><td>页面未打开</td><td>确认已经完整解压，启动窗内有本地地址时，可在 Edge 手动打开该地址。可执行 <code>one-click-start.cmd -CheckOnly</code> 单查环境。</td></tr>
+<tr><td>找不到 COM 口</td><td>检查转接板驱动、线缆和设备管理器，再点“选择串口”。重插后按实际 COM 号选择。</td></tr>
+<tr><td>串口打不开或无扫描数据</td><td>关闭占用端口的其他软件，检查 5V 供电、COM 号、波特率和接线，依据转接板说明检查 DTR。</td></tr>
+<tr><td>G1 舞台未显示</td><td>查看舞台状态并检查 Edge 的 WebGL。可继续使用文字避障建议、二维扫描和本地视频。</td></tr>
+</tbody></table></div>
+<nav aria-label="交付资料"><a href="../请先阅读.html">请先阅读</a><a href="产品介绍.html">产品介绍</a><a href="../交付清单.html">交付清单</a></nav>
+</main>
+</body>
+</html>

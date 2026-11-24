@@ -40,7 +40,7 @@ test("诊断更新在时间窗内合并，达到时间窗后才允许发布", ()
 // 静态回归测试保证串口小块路径不直接申请 Canvas 帧，完整扫描路径仍保留刷新入口。
 test("串口块路径不触发 Canvas 重绘，完整扫描路径负责刷新", () => {
   const appPath = fileURLToPath(new URL("../public/js/app.js", import.meta.url));
-  const source = readFileSync(appPath, "utf8");
+  const source = readFileSync(appPath, "utf8").replaceAll("\r\n", "\n");
   const handleBytesBody = source.match(/function handleBytes\(bytes\) \{([\s\S]*?)\n\}\n\n\/\/ 按浏览器帧率/);
   assert.ok(handleBytesBody, "找不到 handleBytes 函数边界");
   assert.doesNotMatch(handleBytesBody[1], /scheduleRender\s*\(/);

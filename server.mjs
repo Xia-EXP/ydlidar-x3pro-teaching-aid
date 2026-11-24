@@ -12,6 +12,7 @@ const port = Number.isInteger(requestedPort) && requestedPort > 0 ? requestedPor
 // 使用模块自身位置定位 public 目录，使脚本从任意工作目录启动都能找到页面资源。
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const publicRoot = path.join(projectRoot, "public");
+const { version } = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
 
 // 仅允许常见静态资源类型，未知扩展名按二进制流返回，避免错误的 MIME 推断。
 const mimeTypes = new Map([
@@ -61,7 +62,7 @@ const server = http.createServer(async (request, response) => {
 
   if (request.url?.startsWith("/health")) {
     response.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    response.end(JSON.stringify({ ok: true, service: "ydlidar-x3pro-teaching-aid" }));
+    response.end(JSON.stringify({ ok: true, service: "ydlidar-x3pro-teaching-aid", version }));
     return;
   }
 
